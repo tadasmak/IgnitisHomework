@@ -1,24 +1,32 @@
 using System.ComponentModel.DataAnnotations;
+using IgnitisHomework.Models;
 
 namespace IgnitisHomework.DTOs
 {
     public class PowerPlantDto
     {
         public int Id { get; set; }
-        [Required] public string Owner { get; set; } = string.Empty;
-        [Required] public double? Power { get; set; }    
-        [Required] public string ValidFrom { get; set; } = string.Empty;
-        public string? ValidTo { get; set; }
 
-        public static PowerPlantDto FromEntity(Models.PowerPlant plant)
+        [Required]
+        [TwoWordLettersOnly]
+        public string Owner { get; set; } = string.Empty;
+
+        [Required]
+        [Range(0, 200, ErrorMessage = "Power must be between 0 and 200.")]
+        public double? Power { get; set; }
+
+        [Required] public DateTime ValidFrom { get; set; }
+        public DateTime? ValidTo { get; set; }
+
+        public static PowerPlantDto FromEntity(PowerPlant entity)
         {
             return new PowerPlantDto
             {
-                Id = plant.Id,
-                Owner = plant.Owner,
-                Power = plant.Power,
-                ValidFrom = plant.ValidFrom.ToString("yyyy-MM-dd"),
-                ValidTo = plant.ValidTo?.ToString("yyyy-MM-dd")
+                Id = entity.Id,
+                Owner = entity.Owner,
+                Power = entity.Power,
+                ValidFrom = entity.ValidFrom,
+                ValidTo = entity.ValidTo
             };
         }
     }

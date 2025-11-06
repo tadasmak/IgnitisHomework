@@ -39,27 +39,27 @@ namespace IgnitisHomework.Controllers
                 return BadRequest("PowerPlant data is required");
 
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return ValidationProblem(ModelState);
 
-            var newPlant = new Models.PowerPlant
+            try
             {
-                Owner = plantDto.Owner,
-                Power = plantDto.Power ?? 0,
-                ValidFrom = DateTime.SpecifyKind(DateTime.Parse(plantDto.ValidFrom), DateTimeKind.Utc),
-                ValidTo = string.IsNullOrEmpty(plantDto.ValidTo) ? null : DateTime.SpecifyKind(DateTime.Parse(plantDto.ValidTo), DateTimeKind.Utc)
-            };
+                var newPlant = new Models.PowerPlant
+                {
+                    Owner = plantDto.Owner,
+                    Power = plantDto.Power ?? 0,
+                    ValidFrom = DateTime.SpecifyKind(plantDto.ValidFrom, DateTimeKind.Utc),
+                    ValidTo = plantDto.ValidTo.HasValue ? DateTime.SpecifyKind(plantDto.ValidFrom, DateTimeKind.Utc) : null
+                };
 
-            var validationContext = new ValidationContext(newPlant);
-            var validationResults = new List<ValidationResult>();
-            if (!Validator.TryValidateObject(newPlant, validationContext, validationResults, true))
-            {
-                return BadRequest(validationResults);
+                _context.PowerPlants.Add(newPlant);
+                _context.SaveChanges();
+
+                return CreatedAtAction(nameof(GetAll), new { id = newPlant.Id }, PowerPlantDto.FromEntity(newPlant));
             }
-
-            _context.PowerPlants.Add(newPlant);
-            _context.SaveChanges();
-
-            return CreatedAtAction(nameof(GetAll), new { id = newPlant.Id }, DTOs.PowerPlantDto.FromEntity(newPlant));
+            catch (Exception)
+            {
+                return StatusCode(500, "An unexpected server error occurred during data saving.");
+            }
         }
 
         [HttpDelete("{id}")]
