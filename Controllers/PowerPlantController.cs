@@ -5,6 +5,8 @@ using IgnitisHomework.Models;
 using IgnitisHomework.Data;
 using IgnitisHomework.DTOs;
 
+using System.ComponentModel.DataAnnotations;
+
 namespace IgnitisHomework.Controllers
 {
     [Route("/[controller]")]
@@ -36,13 +38,23 @@ namespace IgnitisHomework.Controllers
             if (plantDto == null)
                 return BadRequest("PowerPlant data is required");
 
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var newPlant = new Models.PowerPlant
             {
                 Owner = plantDto.Owner,
-                Power = plantDto.Power,
+                Power = plantDto.Power ?? 0,
                 ValidFrom = DateTime.SpecifyKind(DateTime.Parse(plantDto.ValidFrom), DateTimeKind.Utc),
                 ValidTo = string.IsNullOrEmpty(plantDto.ValidTo) ? null : DateTime.SpecifyKind(DateTime.Parse(plantDto.ValidTo), DateTimeKind.Utc)
             };
+
+            var validationContext = new ValidationContext(newPlant);
+            var validationResults = new List<ValidationResult>();
+            if (!Validator.TryValidateObject(newPlant, validationContext, validationResults, true))
+            {
+                return BadRequest(validationResults);
+            }
 
             _context.PowerPlants.Add(newPlant);
             _context.SaveChanges();

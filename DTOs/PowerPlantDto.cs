@@ -1,11 +1,13 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace IgnitisHomework.DTOs
 {
     public class PowerPlantDto
     {
         public int Id { get; set; }
-        public string Owner { get; set; } = string.Empty;
-        public double Power { get; set; }
-        public string ValidFrom { get; set; } = string.Empty;
+        [Required] public string Owner { get; set; } = string.Empty;
+        [Required] public double? Power { get; set; }    
+        [Required] public string ValidFrom { get; set; } = string.Empty;
         public string? ValidTo { get; set; }
 
         public static PowerPlantDto FromEntity(Models.PowerPlant plant)
