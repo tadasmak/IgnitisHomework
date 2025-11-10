@@ -12,11 +12,11 @@ namespace IgnitisHomework.Controllers
 {
     [Route("/[controller]")]
     [ApiController]
-    public class PowerPlantController : ControllerBase
+    public class PowerPlantsController : ControllerBase
     {
         private readonly AppDbContext _context;
 
-        public PowerPlantController(AppDbContext context)
+        public PowerPlantsController(AppDbContext context)
         {
             _context = context;
         }

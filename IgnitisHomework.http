@@ -1,6 +1,0 @@
-@IgnitisHomework_HostAddress = http://localhost:5051
-
-GET {{IgnitisHomework_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
