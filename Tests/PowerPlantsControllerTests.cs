@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -27,11 +28,6 @@ namespace IgnitisHomework.Tests
 			_controller = new PowerPlantsController(_context);
 		}
 
-		private void MockModelState(PowerPlantDto dto, string key, string message)
-		{
-			_controller.ModelState.AddModelError(key, message);
-		}
-
 		private PowerPlantDto GetValidPowerPlantDto()
 		{
 			return new PowerPlantDto
@@ -44,7 +40,26 @@ namespace IgnitisHomework.Tests
 			};
 		}
 
-		[Fact]
+        private static IList<ValidationResult> ValidateModel(object model)
+        {
+            var validationResults = new List<ValidationResult>();
+            var validationContext = new ValidationContext(model, serviceProvider: null, items: null);
+            Validator.TryValidateObject(model, validationContext, validationResults, validateAllProperties: true);
+            return validationResults;
+        }
+
+        private void SeedDatabase()
+        {
+            _context.PowerPlants.AddRange(new[]
+            {
+                new PowerPlant { Id = 1, Owner = "Vardenis Pavardenis", Power = 9.3, ValidFrom = new DateTime(2020, 1, 1), ValidTo = new DateTime(2025, 1, 1) },
+                new PowerPlant { Id = 2, Owner = "Jonas Jonaitis", Power = 5.7, ValidFrom = new DateTime(2021, 6, 15), ValidTo = new DateTime(2026, 6, 15) },
+                new PowerPlant { Id = 3, Owner = "Ona Petraitë", Power = 12.5, ValidFrom = new DateTime(2019, 9, 10), ValidTo = null }
+            });
+            _context.SaveChanges();
+        }
+
+        [Fact]
 		public void AddPowerPlant_ValidData_Returns201Created()
 		{
 			var validDto = GetValidPowerPlantDto();
@@ -52,14 +67,17 @@ namespace IgnitisHomework.Tests
 			var result = _controller.AddPowerPlant(validDto);
 
 			var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+			Assert.Equal(201, createdResult.StatusCode);
 
 			var returnedDto = Assert.IsType<PowerPlantDto>(createdResult.Value);
+			Assert.True(returnedDto.Id > 0);
 
 			var savedPlant = _context.PowerPlants.FirstOrDefault(plant => plant.Id == returnedDto.Id);
 
 			Assert.NotNull(savedPlant);
 			Assert.Equal(validDto.Owner, savedPlant.Owner);
 			Assert.Equal(validDto.Power!.Value, savedPlant.Power);
+			Assert.Equal(validDto.ValidFrom!.Value, savedPlant.ValidFrom);
 		}
 
 		[Fact]
@@ -83,55 +101,40 @@ namespace IgnitisHomework.Tests
 				ValidFrom = default
 			};
 
-			MockModelState(incompleteDto, "Owner", "The Owner field is required.");
-			MockModelState(incompleteDto, "Power", "The Power field is required.");
-			MockModelState(incompleteDto, "ValidFrom", "The ValidFrom field is required.");
+			var validationResults = ValidateModel(incompleteDto);
 
-			var result = _controller.AddPowerPlant(incompleteDto);
+            Assert.Contains(validationResults, r => r.MemberNames.Contains(nameof(PowerPlantDto.Owner)));
+            Assert.Contains(validationResults, r => r.MemberNames.Contains(nameof(PowerPlantDto.Power)));
+            Assert.Contains(validationResults, r => r.MemberNames.Contains(nameof(PowerPlantDto.ValidFrom)));
+        }
 
-			var badRequestResult = Assert.IsType<ObjectResult>(result);
-			var validationProblem = Assert.IsType<ValidationProblemDetails>(badRequestResult.Value);
-
-			Assert.True(validationProblem.Errors.ContainsKey("Owner"));
-			Assert.True(validationProblem.Errors.ContainsKey("Power"));
-			Assert.True(validationProblem.Errors.ContainsKey("ValidFrom"));
-		}
-
-		[Theory]
+        [Theory]
         [InlineData("John")]
         [InlineData("John-Doe")]
         [InlineData("John Doe123")]
-        public void AddPowerplant_OwnerFormatInvalid_Returns400ValidationProblem(string invalidOwner)
+        [InlineData("John Paul Doe")]
+        public void PowerPlantDto_OwnerFormatInvalid_FailsValidation(string invalidOwner)
 		{
 			var dto = GetValidPowerPlantDto();
 			dto.Owner = invalidOwner;
 
-			MockModelState(dto, "Owner", "Owner must consist of exactly two words containing only letters.");
+			var validationResults = ValidateModel(dto);
 
-			var result = _controller.AddPowerPlant(dto);
-
-			var badRequestResult = Assert.IsType<ObjectResult>(result);
-			var validationProblem = Assert.IsType<ValidationProblemDetails>(badRequestResult.Value);
-			Assert.True(validationProblem.Errors.ContainsKey("Owner"));
+			Assert.Contains(validationResults, r => r.MemberNames.Contains(nameof(PowerPlantDto.Owner)));
 		}
 
 		[Theory]
 		[InlineData(-0.01)]
 		[InlineData(200.01)]
-		public void AddPowerPlant_PowerOutOfRange_Returns400ValidationProblem(double invalidPower)
+		public void PowerPlantDto_PowerOutOfRange_FailsValidation(double invalidPower)
 		{
 			var dto = GetValidPowerPlantDto();
 			dto.Power = invalidPower;
 
-			MockModelState(dto, "Power", "Power must be between 0 and 200.");
+            var validationResults = ValidateModel(dto);
 
-			var result = _controller.AddPowerPlant(dto);
-
-			var badRequestResult = Assert.IsType<ObjectResult>(result);
-			var validationProblem = Assert.IsType<ValidationProblemDetails>(badRequestResult.Value);
-
-			Assert.True(validationProblem.Errors.ContainsKey("Power"));
-		}
+            Assert.Contains(validationResults, r => r.MemberNames.Contains(nameof(PowerPlantDto.Power)));
+        }
 
 		public void Dispose()
 		{
